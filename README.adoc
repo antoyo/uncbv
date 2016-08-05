@@ -1,0 +1,39 @@
+= uncbv
+
+CBV archive extractor written in Rust.
+
+== Installation
+
+NOTE: this method currently requires you to be running `cargo` 0.6.0 or newer.
+
+[source,bash]
+----
+cargo install uncbv
+----
+
+=== Installing from source
+
+To install from source, first checkout to the tag or branch you want to install, then issue
+
+[source,bash]
+----
+cargo install --path .
+----
+
+This will install `uncbv` in your `~/.cargo/bin`. Make sure to add `~/.cargo/bin` directory to your `PATH` variable.
+
+== Usage
+
+List the files in the archive:
+
+[source,bash]
+----
+uncbv list archive.cbv
+----
+
+Extract the files from the archive:
+
+[source,bash]
+----
+uncbv extract archive.cbv
+----
