@@ -6,6 +6,9 @@ description = "CBV archive extractor written in Rust."
 license = "GPL-3.0"
 repository = "https://github.com/antoyo/uncbv"
 
+[features]
+nightly = []
+
 [dependencies]
 docopt = "^0.6"
 encoding = "^0.2"
