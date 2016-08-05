@@ -2,6 +2,8 @@
 
 CBV archive extractor written in Rust.
 
+image:http://meritbadge.herokuapp.com/uncbv[link="https://crates.io/crates/uncbv"]
+
 == Installation
 
 NOTE: this method currently requires you to be running `cargo` 0.6.0 or newer.
