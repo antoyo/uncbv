@@ -22,8 +22,8 @@ script:
   - |
       travis-cargo build &&
       travis-cargo test
-#after_success:
-  #- travis-cargo coveralls --no-sudo --verify
+after_success:
+  - travis-cargo coveralls --no-sudo --verify
 
 env:
   global:
