@@ -16,9 +16,9 @@
  */
 
 /*
- * TODO: upload on crates.io.
- * TODO: add tests.
- * TODO: add the build, coverage and crates.io badges.
+ * TODO: check whether the output files already exists. If so, ask to overwrite.
+ * TODO: create a crate for the cbv parser.
+ * TODO: add the coverage badge.
  */
 
 extern crate docopt;
@@ -29,29 +29,52 @@ extern crate nom;
 extern crate rustc_serialize;
 
 mod archive;
+#[macro_use]
+mod macros;
 mod cbv;
 
 use docopt::Docopt;
 
-use archive::extract_filenames;
+use archive::{extract, get_file_list};
 
 const USAGE: &'static str = "
 CBV unarchiver.
 
 Usage:
     uncbv (l | list) <filename>
+    uncbv (x | extract) <filename> [(-o <output> | --output=<output>)]
     uncbv (-h | --help)
     uncbv (-V | --version)
 
 Options:
-    -h --help       Show this help.
-    -V --version    Show the version of uncbv.
+    -h --help               Show this help.
+    -o --output <output>    Set output directory.
+    -V --version            Show the version of uncbv.
 ";
+
+/// Unwrap the result or show the error and return from the function.
+macro_rules! parse_or_show_error {
+    ($parser:expr, $filename:expr $(, $args:expr )*) => {
+        match $parser($filename $(, $args )*) {
+            Ok(result) => {
+                result
+            },
+            Err(error) => {
+                println!("{}: {}", $filename, error);
+                return;
+            },
+        }
+    };
+}
 
 #[derive(Debug, RustcDecodable)]
 struct Args {
     arg_filename: String,
+    flag_output: Option<String>,
+    cmd_extract: bool,
+    cmd_l: bool,
     cmd_list: bool,
+    cmd_x: bool,
 }
 
 fn main() {
@@ -59,14 +82,15 @@ fn main() {
     let args: Args = Docopt::new(USAGE)
         .and_then(|decoder| decoder.version(Some(version)).decode())
         .unwrap_or_else(|error| error.exit());
-    if args.cmd_list {
-        match extract_filenames(&args.arg_filename) {
-            Ok(files) => {
-                for file in files {
-                    println!("{}", file);
-                }
-            },
-            Err(error) => println!("{:?}", error),
+    let filename = &args.arg_filename;
+    if args.cmd_list || args.cmd_l {
+        let files = parse_or_show_error!(get_file_list, filename);
+        for file in files {
+            println!("{}", file.filename);
         }
+    }
+    else if args.cmd_extract || args.cmd_x {
+        let output = args.flag_output.unwrap_or(".".to_string());
+        parse_or_show_error!(extract, filename, &output);
     }
 }

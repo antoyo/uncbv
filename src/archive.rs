@@ -18,13 +18,23 @@
 //! CBV archive utility functions.
 
 use std::ffi::OsStr;
-use std::io::Error;
+use std::io::{Error, ErrorKind};
 use std::path::Path;
 
 use memmap::{Mmap, Protection};
-use nom::IResult::Done;
+use nom::IResult::{self, Done, Incomplete};
 
-use cbv::archive_filenames;
+use cbv::{FileMetaData, extract_file_list, extract_files};
+
+/// Unwrap a Done or return an error.
+macro_rules! unwrap_or_error {
+    ($val:expr) => {
+        match $val {
+            Done(_, filenames) => filenames,
+            IResult::Error(_) | Incomplete(_) => return Err(Error::new(ErrorKind::InvalidInput, "Not a CBV archive")),
+        }
+    };
+}
 
 /// Check if the file extension belongs to an encrypted CBV archive (.cbz).
 fn is_encrypted_archive(filename: &str) -> bool {
@@ -33,31 +43,27 @@ fn is_encrypted_archive(filename: &str) -> bool {
 }
 
 /// Extract the filenames from the archive.
-pub fn extract_filenames(filename: &str) -> Result<Vec<String>, Error> {
+pub fn get_file_list(filename: &str) -> Result<Vec<FileMetaData>, Error> {
     if is_encrypted_archive(filename) {
         panic!("Encrypted archive is not supported at the moment.");
     }
     else {
         let file = try!(Mmap::open_path(filename, Protection::Read));
         let bytes: &[u8] = unsafe { file.as_slice() };
-        match archive_filenames(bytes) {
-            Done(_, filenames) => Ok(filenames),
-            _ => panic!("Error"), // TODO
-        }
+        Ok(unwrap_or_error!(extract_file_list(bytes)))
     }
 }
 
-/// Unarchive and extract a CBV archive.
-pub fn unarchive(filename: &str) -> Result<(), Error> {
+/// Decrypt, unarchive and decompress the files from a CBV archive.
+pub fn extract(filename: &str, output_dir: &str) -> Result<(), Error> {
     if is_encrypted_archive(filename) {
         panic!("Encrypted archive is not supported at the moment.");
     }
     else {
         let file = try!(Mmap::open_path(filename, Protection::Read));
         let bytes: &[u8] = unsafe { file.as_slice() };
-        if let Done(_, result) = archive_filenames(bytes) {
-            println!("{:?}", result);
-        }
+        unwrap_or_error!(extract_files(bytes, output_dir))
     }
+
     Ok(())
 }
