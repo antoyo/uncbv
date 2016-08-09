@@ -50,9 +50,7 @@ fn assert_file(expected_file_name: String, actual_file_name: String) {
             break;
         }
 
-        for (byte1, byte2) in buffer1.iter().zip(buffer2.iter()) {
-            assert_eq!(byte1, byte2);
-        }
+        assert_eq!(&buffer1[..], &buffer2[..]);
     }
 }
 
@@ -100,6 +98,6 @@ fn extract(filename: &str) {
 
 #[test]
 fn extract_files() {
-    //extract("twic1134");
+    extract("twic1134");
     extract("small");
 }

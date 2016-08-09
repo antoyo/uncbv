@@ -16,13 +16,20 @@
  */
 
 /*
+ * TODO: Better error handling.
+ * TODO: Decompress the files concurrently.
+ * TODO: Write in a channel instead of in the files directly (perhaps there is a better way).
+ * TODO: Decompress as a vector of Byte | RunLength | BackwardReference (perhaps there is a better
+ * way).
  * TODO: check whether the output files already exists. If so, ask to overwrite.
  * TODO: create a crate for the cbv parser.
- * TODO: add the coverage badge.
+ * TODO: add the coverage badge and update the travis script to use coveralls (since travis-cargo
+ * does not work).
  */
 
 extern crate docopt;
 extern crate encoding;
+extern crate huffman;
 extern crate memmap;
 #[macro_use]
 extern crate nom;

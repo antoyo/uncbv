@@ -12,6 +12,7 @@ nightly = []
 [dependencies]
 docopt = "^0.6"
 encoding = "^0.2"
+huffman = "^0.0.2"
 memmap = "^0.4"
 nom = "^1.2"
 rustc-serialize = "^0.3"

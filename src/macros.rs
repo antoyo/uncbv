@@ -44,19 +44,6 @@ macro_rules! named_args {
     };
 }
 
-/// Apply a parser if the condition is true. Otherwise, return the input.
-macro_rules! parse_if {
-    ($input:expr, $cond:expr, $parser:ident) => {{
-        if $cond {
-            $parser($input)
-        }
-        else {
-            let (input, output) = $input.split_at(0);
-            $crate::nom::IResult::Done(input, output)
-        }
-    }};
-}
-
 /// Apply a parser if the condition is true. Otherwise, map the input with the expression.
 macro_rules! parse_if_else {
     ($input:expr, $cond:expr, $parser:ident, $mapper:expr) => {{
