@@ -43,3 +43,10 @@ Extract the files from the archive:
 ----
 uncbv extract archive.cbv
 ----
+
+Only decrypt the archive (to decrypt *and* decompress, use the `extract` command):
+
+[source,bash]
+----
+uncbv decrypt archive.cbz
+----

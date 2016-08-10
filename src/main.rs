@@ -27,6 +27,7 @@
  * does not work).
  */
 
+extern crate des;
 extern crate docopt;
 extern crate encoding;
 extern crate huffman;
@@ -36,13 +37,14 @@ extern crate nom;
 extern crate rustc_serialize;
 
 mod archive;
+mod decrypt;
 #[macro_use]
 mod macros;
 mod cbv;
 
 use docopt::Docopt;
 
-use archive::{extract, get_file_list};
+use archive::{decrypt_archive, extract, get_file_list};
 
 const USAGE: &'static str = "
 CBV unarchiver.
@@ -50,6 +52,7 @@ CBV unarchiver.
 Usage:
     uncbv (l | list) <filename>
     uncbv (x | extract) <filename> [(-o <output> | --output=<output>)]
+    uncbv (d | decrypt) <filename> [(-o <output> | --output=<output>)]
     uncbv (-h | --help)
     uncbv (-V | --version)
 
@@ -78,6 +81,8 @@ macro_rules! parse_or_show_error {
 struct Args {
     arg_filename: String,
     flag_output: Option<String>,
+    cmd_d: bool,
+    cmd_decrypt: bool,
     cmd_extract: bool,
     cmd_l: bool,
     cmd_list: bool,
@@ -97,7 +102,10 @@ fn main() {
         }
     }
     else if args.cmd_extract || args.cmd_x {
-        let output = args.flag_output.unwrap_or(".".to_string());
+        let output = args.flag_output.unwrap_or_else(|| ".".to_string());
         parse_or_show_error!(extract, filename, &output);
+    }
+    else if args.cmd_decrypt || args.cmd_d {
+        decrypt_archive(filename, args.flag_output);
     }
 }

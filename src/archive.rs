@@ -18,13 +18,15 @@
 //! CBV archive utility functions.
 
 use std::ffi::OsStr;
-use std::io::{Error, ErrorKind};
-use std::path::Path;
+use std::fs::{File, create_dir_all};
+use std::io::{self, Error, ErrorKind};
+use std::path::{Path, PathBuf};
 
 use memmap::{Mmap, Protection};
 use nom::IResult::{self, Done, Incomplete};
 
 use cbv::{FileMetaData, extract_file_list, extract_files};
+use decrypt::decrypt;
 
 /// Unwrap a Done or return an error.
 macro_rules! unwrap_or_error {
@@ -36,16 +38,60 @@ macro_rules! unwrap_or_error {
     };
 }
 
-/// Check if the file extension belongs to an encrypted CBV archive (.cbz).
-fn is_encrypted_archive(filename: &str) -> bool {
-    let path = Path::new(filename);
-    path.extension() == Some(OsStr::new("cbz"))
+/// Ask for the password.
+fn ask_password() -> String {
+    let mut password = String::new();
+    println!("Password:");
+    io::stdin().read_line(&mut password).unwrap();
+    password.pop();
+    password
+}
+
+/// Ask for the password and decrypt the archive.
+pub fn decrypt_archive(filename: &str, output: Option<String>) {
+    let password = ask_password();
+    let output = output.unwrap_or_else(|| {
+        let mut path = PathBuf::from(filename);
+        path.set_extension("cbv");
+        path.into_os_string().into_string().unwrap()
+    });
+
+    let mut file = File::create(output).unwrap();
+    decrypt(filename, &password, &mut file).unwrap();
+}
+
+/// Decrypt, unarchive and decompress the files from a CBV archive.
+pub fn extract(filename: &str, output_dir: &str) -> Result<(), Error> {
+    let filename =
+        if is_encrypted_archive(filename) {
+            let mut path = PathBuf::from(filename);
+            path.set_extension("cbv");
+            let new_filename = path.file_name().unwrap().to_str().unwrap();
+            try!(create_dir_all(output_dir));
+            let output_path = Path::new(output_dir).join(new_filename);
+            let output_file = output_path.into_os_string().into_string().unwrap();;
+
+            decrypt_archive(filename, Some(output_file.clone()));
+            output_file
+        }
+        else {
+            filename.to_string()
+        };
+
+    let file = try!(Mmap::open_path(filename, Protection::Read));
+    let bytes: &[u8] = unsafe { file.as_slice() };
+    Ok(unwrap_or_error!(extract_files(bytes, output_dir)))
 }
 
 /// Extract the filenames from the archive.
 pub fn get_file_list(filename: &str) -> Result<Vec<FileMetaData>, Error> {
     if is_encrypted_archive(filename) {
-        panic!("Encrypted archive is not supported at the moment.");
+        let password = ask_password();
+        let mut input = vec![];
+        // TODO: do not decrypt the whole file. Only the number of bytes required to store the
+        // filenames.
+        try!(decrypt(filename, &password, &mut input));
+        Ok(unwrap_or_error!(extract_file_list(&input)))
     }
     else {
         let file = try!(Mmap::open_path(filename, Protection::Read));
@@ -54,16 +100,8 @@ pub fn get_file_list(filename: &str) -> Result<Vec<FileMetaData>, Error> {
     }
 }
 
-/// Decrypt, unarchive and decompress the files from a CBV archive.
-pub fn extract(filename: &str, output_dir: &str) -> Result<(), Error> {
-    if is_encrypted_archive(filename) {
-        panic!("Encrypted archive is not supported at the moment.");
-    }
-    else {
-        let file = try!(Mmap::open_path(filename, Protection::Read));
-        let bytes: &[u8] = unsafe { file.as_slice() };
-        unwrap_or_error!(extract_files(bytes, output_dir))
-    }
-
-    Ok(())
+/// Check if the file extension belongs to an encrypted CBV archive (.cbz).
+fn is_encrypted_archive(filename: &str) -> bool {
+    let path = Path::new(filename);
+    path.extension() == Some(OsStr::new("cbz"))
 }

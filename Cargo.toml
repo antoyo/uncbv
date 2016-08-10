@@ -10,6 +10,7 @@ repository = "https://github.com/antoyo/uncbv"
 nightly = []
 
 [dependencies]
+des = "^0.0.2"
 docopt = "^0.6"
 encoding = "^0.2"
 huffman = "^0.0.2"

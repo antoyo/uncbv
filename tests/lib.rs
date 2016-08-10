@@ -2,10 +2,10 @@ extern crate rand;
 
 use std::env::temp_dir;
 use std::ffi::OsString;
-use std::fs::{File, read_dir, remove_dir_all};
-use std::io::Read;
-use std::path::PathBuf;
-use std::process::Command;
+use std::fs::{File, read_dir, remove_dir_all, remove_file};
+use std::io::{Read, Write};
+use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
 
 use rand::random;
 
@@ -54,12 +54,36 @@ fn assert_file(expected_file_name: String, actual_file_name: String) {
     }
 }
 
-fn list(filename: &str) {
+fn list(filename: &str, password: Option<&str>) {
+    let has_password = password.is_some();
     let name = format!("tests/{}", filename);
     let mut process = Command::new("target/debug/uncbv");
-    process.args(&["list", &format!("{}.cbv", &name)]);
-    let output = String::from_utf8(process.output().unwrap().stdout).unwrap();
+    let filename =
+        if has_password {
+            format!("{}.cbz", &name)
+        }
+        else {
+            format!("{}.cbv", &name)
+        };
+
+    let mut child =
+        process.args(&["list", &filename])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .spawn()
+            .unwrap();
+
+    if let Some(password) = password {
+        writeln!(child.stdin.as_mut().unwrap(), "{}", password).unwrap();
+    }
+    child.wait().unwrap();
+
+    let mut output = String::new();
+    child.stdout.unwrap().read_to_string(&mut output).unwrap();
     let mut output_files: Vec<_> = output.split("\n").collect();
+    if has_password {
+        output_files.remove(0); // NOTE: Remove the "Password:" line.
+    }
     output_files.pop();
     output_files.sort();
 
@@ -73,19 +97,42 @@ fn list(filename: &str) {
 
 #[test]
 fn list_files() {
-    list("twic1134");
-    list("small");
+    list("twic1134", None);
+    list("small", Some("password"));
 }
 
-fn extract(filename: &str) {
+fn extract(filename: &str, expected_file: Option<&str>, password: Option<&str>) {
     let temp_dir = TempDir::new();
     let dir_name = temp_dir.as_str();
     let name = format!("tests/{}", filename);
     let mut process = Command::new("target/debug/uncbv");
-    process.args(&["extract", &format!("{}.cbv", name), "-o", dir_name])
-        .status()
-        .unwrap();
 
+    let input_file =
+        if Path::new(filename).is_absolute() {
+            filename.to_string()
+        }
+        else {
+            if password.is_some() {
+                format!("{}.cbz", name)
+            }
+            else {
+                format!("{}.cbv", name)
+            }
+        };
+
+    let mut child =
+        process.args(&["extract", &input_file, "-o", dir_name])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .spawn()
+            .unwrap();
+
+    if let Some(password) = password {
+        writeln!(child.stdin.as_mut().unwrap(), "{}", password).unwrap();
+    }
+    child.wait().unwrap();
+
+    let name = expected_file.unwrap_or(&name);
     let expected_files: Vec<_> = read_dir(&name)
         .unwrap()
         .map(|dir_entry| dir_entry.unwrap().file_name().into_string().unwrap())
@@ -98,6 +145,36 @@ fn extract(filename: &str) {
 
 #[test]
 fn extract_files() {
-    extract("twic1134");
-    extract("small");
+    extract("twic1134", None, None);
+    extract("small", None, None);
+}
+
+fn decrypt(filename: &str, password: &str, output_dir: &str) {
+    let path = temp_dir().join(format!("{}.cbv", filename));
+    let output_file = path.to_str().unwrap();
+    let output_dir = format!("tests/{}", output_dir);
+    let name = format!("tests/{}", filename);
+    let mut process = Command::new("target/debug/uncbv");
+    let mut child =
+        process.args(&["decrypt", &format!("{}.cbz", name), "-o", &output_file])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .spawn()
+            .unwrap();
+    writeln!(child.stdin.as_mut().unwrap(), "{}", password).unwrap();
+    child.wait().unwrap();
+    extract(output_file, Some(&output_dir), None);
+    remove_file(output_file).unwrap();
+}
+
+fn decrypt_extract(filename: &str, password: &str) {
+    extract(filename, None, Some(password));
+}
+
+#[test]
+fn decrypt_files() {
+    decrypt("small", "password", "small");
+    decrypt("small2", "pass", "small");
+    decrypt("small3", "my long password", "small");
+    decrypt_extract("small", "password");
 }
