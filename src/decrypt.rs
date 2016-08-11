@@ -17,12 +17,12 @@
 
 //! CBV decryption functions.
 
-use std::fs::File;
 use std::io::{self, BufReader, Read, Write};
 
 use des;
 
-const BUFFER_SIZE: usize = 4096;
+use archive::BUFFER_SIZE;
+
 const PASSWORD_LEN: usize = 8;
 
 /// Create the decryption key from the password.
@@ -63,11 +63,10 @@ fn copy_into_array(slice: &[u8]) -> [u8; PASSWORD_LEN] {
 }
 
 /// Decrypt the file into `output`.
-pub fn decrypt(filename: &str, password: &str, output: &mut Write) -> Result<(), io::Error> {
+pub fn decrypt(reader: &mut Read, password: &str, output: &mut Write) -> Result<(), io::Error> {
     let key = create_key(password);
 
-    let file = try!(File::open(filename));
-    let mut reader = BufReader::new(file);
+    let mut reader = BufReader::new(reader);
     let mut buffer = [0; BUFFER_SIZE];
 
     while let Ok(byte_count) = reader.read(&mut buffer) {

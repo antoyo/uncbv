@@ -19,7 +19,7 @@
 
 use std::ffi::OsStr;
 use std::fs::{File, create_dir_all};
-use std::io::{self, Error, ErrorKind};
+use std::io::{self, Error, ErrorKind, Read};
 use std::path::{Path, PathBuf};
 
 use memmap::{Mmap, Protection};
@@ -27,6 +27,8 @@ use nom::IResult::{self, Done, Incomplete};
 
 use cbv::{FileMetaData, extract_file_list, extract_files};
 use decrypt::decrypt;
+
+pub const BUFFER_SIZE: usize = 4096;
 
 /// Unwrap a Done or return an error.
 macro_rules! unwrap_or_error {
@@ -56,8 +58,9 @@ pub fn decrypt_archive(filename: &str, output: Option<String>) {
         path.into_os_string().into_string().unwrap()
     });
 
+    let mut input_file = File::open(filename).unwrap();
     let mut file = File::create(output).unwrap();
-    decrypt(filename, &password, &mut file).unwrap();
+    decrypt(&mut input_file, &password, &mut file).unwrap();
 }
 
 /// Decrypt, unarchive and decompress the files from a CBV archive.
@@ -88,10 +91,23 @@ pub fn get_file_list(filename: &str) -> Result<Vec<FileMetaData>, Error> {
     if is_encrypted_archive(filename) {
         let password = ask_password();
         let mut input = vec![];
-        // TODO: do not decrypt the whole file. Only the number of bytes required to store the
-        // filenames.
-        try!(decrypt(filename, &password, &mut input));
-        Ok(unwrap_or_error!(extract_file_list(&input)))
+        let mut cbv_output = vec![];
+        let mut buffer = [0; BUFFER_SIZE];
+        let mut file = try!(File::open(filename));
+
+        loop {
+            try!(file.read(&mut buffer));
+            try!(decrypt(&mut buffer.as_ref(), &password, &mut cbv_output));
+            input.append(&mut cbv_output);
+
+            // TODO: try to parse smaller parts instead of parsing the whole thing again an again.
+            let result = extract_file_list(&input);
+
+            match result {
+                Done(_, _) | IResult::Error(_) => return Ok(unwrap_or_error!(result)),
+                Incomplete(_) => (),
+            }
+        }
     }
     else {
         let file = try!(Mmap::open_path(filename, Protection::Read));

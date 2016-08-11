@@ -54,6 +54,7 @@ fn assert_file(expected_file_name: String, actual_file_name: String) {
     }
 }
 
+// TODO: rewrite these utility functions into more function with less parameters.
 fn list(filename: &str, password: Option<&str>) {
     let has_password = password.is_some();
     let name = format!("tests/{}", filename);
