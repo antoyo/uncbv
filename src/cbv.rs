@@ -141,7 +141,7 @@ fn decompress_block(input: Vec<u8>) -> Vec<u8> {
                     let offset = ((input[1] as usize) << 4) + low + 3;
                     let size =
                         if high == 2 {
-                            let size = input[2] + 0x10;
+                            let size = (input[2] as usize) + 0x10;
                             input = &input[1..];
                             size as usize
                         }
@@ -184,8 +184,11 @@ named_args!(extract_block<'a>(file: &FileMetaData, output_dir: &str) <()>,
                     }
             )
         , || {
-            create_dir_all(output_dir).unwrap();
             let path = Path::new(output_dir).join(&file.filename);
+            {
+                let directory = path.parent().unwrap().to_str().unwrap();
+                create_dir_all(directory).unwrap();
+            }
             let mut file = OpenOptions::new()
                 .create(true)
                 .append(true)
