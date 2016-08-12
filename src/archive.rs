@@ -25,13 +25,19 @@ use std::path::{Path, PathBuf};
 use memmap::{Mmap, Protection};
 use nom::IResult::{self, Done, Incomplete};
 
-use cbv::{FileMetaData, extract_file_list, extract_files};
+use cbv::{self, FileMetaData, extract_file_list, extract_files, file_list};
 use decrypt::decrypt;
 
-pub const BUFFER_SIZE: usize = 4096;
+const HEADER_SIZE: usize = 8;
 
 /// Unwrap a Done or return an error.
 macro_rules! unwrap_or_error {
+    ($val:expr, $message:expr) => {
+        match $val {
+            Done(_, filenames) => filenames,
+            IResult::Error(_) | Incomplete(_) => return Err(Error::new(ErrorKind::InvalidInput, $message)),
+        }
+    };
     ($val:expr) => {
         match $val {
             Done(_, filenames) => filenames,
@@ -90,24 +96,24 @@ pub fn extract(filename: &str, output_dir: &str) -> Result<(), Error> {
 pub fn get_file_list(filename: &str) -> Result<Vec<FileMetaData>, Error> {
     if is_encrypted_archive(filename) {
         let password = ask_password();
-        let mut input = vec![];
         let mut cbv_output = vec![];
-        let mut buffer = [0; BUFFER_SIZE];
+        let mut buffer = [0; HEADER_SIZE];
         let mut file = try!(File::open(filename));
 
-        loop {
-            try!(file.read(&mut buffer));
-            try!(decrypt(&mut buffer.as_ref(), &password, &mut cbv_output));
-            input.append(&mut cbv_output);
+        try!(file.read(&mut buffer[..HEADER_SIZE]));
+        try!(decrypt(buffer.as_ref(), &password, &mut cbv_output));
 
-            // TODO: try to parse smaller parts instead of parsing the whole thing again an again.
-            let result = extract_file_list(&input);
+        let header = unwrap_or_error!(cbv::header(&cbv_output), "Wrong password");
+        cbv_output.clear();
 
-            match result {
-                Done(_, _) | IResult::Error(_) => return Ok(unwrap_or_error!(result)),
-                Incomplete(_) => (),
-            }
-        }
+        let file_list_len = header.total_size();
+        let mut buffer = vec![0; file_list_len];
+        try!(file.read_exact(&mut buffer));
+        try!(decrypt(buffer.as_slice(), &password, &mut cbv_output));
+
+        let result = file_list(&cbv_output, header);
+
+        Ok(unwrap_or_error!(result))
     }
     else {
         let file = try!(Mmap::open_path(filename, Protection::Read));

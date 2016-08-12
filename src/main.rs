@@ -16,6 +16,7 @@
  */
 
 /*
+ * TODO: Add an argument to extract in a new directory.
  * TODO: Check the memory usage.
  * TODO: Better error handling.
  * TODO: Decompress the files concurrently.

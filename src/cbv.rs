@@ -69,7 +69,7 @@ impl FileMetaData {
 
 /// CBV archive header.
 #[derive(Debug)]
-struct Header {
+pub struct Header {
     file_count: usize,
     filename_len: u8,
 }
@@ -80,6 +80,11 @@ impl Header {
             file_count: file_count as usize,
             filename_len: filename_len,
         }
+    }
+
+    /// Get the total size of the file list in the header.
+    pub fn total_size(&self) -> usize {
+        self.file_count * self.filename_len as usize
     }
 }
 
@@ -238,7 +243,7 @@ named!(filename <String>,
 );
 
 /// Parse the file list.
-named_args!(file_list(header: Header) < Vec<FileMetaData> >,
+named_args!(pub file_list(header: Header) < Vec<FileMetaData> >,
     count!(
         flat_map!(
             take!(header.filename_len),
@@ -259,7 +264,7 @@ named!(file_metadata <FileMetaData>,
 );
 
 /// Parse a CBV file header.
-named!(header <Header>,
+named!(pub header <Header>,
     chain!
         ( tag!(&[0x08, 0x00]) // CBV magic number.
         ~ file_count: le_u16

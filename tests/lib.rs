@@ -154,7 +154,7 @@ fn extract_decrypted(filename: &str, expected_dir: &str) {
         .collect();
 
     for file in expected_files {
-        assert_file(format!("{}/{}",expected_dir, file), format!("{}/{}", dir_name, file));
+        assert_file(format!("{}/{}", expected_dir, file), format!("{}/{}", dir_name, file));
     }
 }
 

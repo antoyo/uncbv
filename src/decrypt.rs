@@ -21,8 +21,7 @@ use std::io::{self, BufReader, Read, Write};
 
 use des;
 
-use archive::BUFFER_SIZE;
-
+const BUFFER_SIZE: usize = 4096;
 const PASSWORD_LEN: usize = 8;
 
 /// Create the decryption key from the password.
@@ -63,7 +62,7 @@ fn copy_into_array(slice: &[u8]) -> [u8; PASSWORD_LEN] {
 }
 
 /// Decrypt the file into `output`.
-pub fn decrypt(reader: &mut Read, password: &str, output: &mut Write) -> Result<(), io::Error> {
+pub fn decrypt<R: Read>(reader: R, password: &str, output: &mut Write) -> Result<(), io::Error> {
     let key = create_key(password);
 
     let mut reader = BufReader::new(reader);
