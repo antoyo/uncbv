@@ -1,4 +1,5 @@
 extern crate rand;
+extern crate walkdir;
 
 use std::env::temp_dir;
 use std::ffi::OsString;
@@ -8,12 +9,14 @@ use std::path::PathBuf;
 use std::process::{Command, Stdio};
 
 use rand::random;
+use walkdir::WalkDir;
 
 const BUFFER_SIZE: usize = 4096;
+const DEFAULT_PASSWORD: &'static str = "password";
 
 #[test]
 fn decrypt_files() {
-    decrypt("small", "password", "small");
+    decrypt("small", DEFAULT_PASSWORD, "small");
     decrypt("small2", "pass", "small");
     decrypt("small3", "my long password", "small");
 }
@@ -22,14 +25,40 @@ fn decrypt_files() {
 fn extract_files() {
     extract("twic1134");
     extract("small");
-    decrypt_extract("small", "password");
+    decrypt_extract("small", DEFAULT_PASSWORD);
+}
+
+#[test]
+#[ignore]
+fn extract_files2() {
+    let (_files_to_decrypt, files_to_extract) = others();
+    for filename in files_to_extract {
+        extract(&filename);
+    }
+
+    /*for filename in files_to_decrypt {
+        decrypt_extract(&filename, DEFAULT_PASSWORD);
+    }*/
 }
 
 #[test]
 fn list_files() {
     list("twic1134");
     list("small");
-    list_encrypted("small", "password");
+    list_encrypted("small", DEFAULT_PASSWORD);
+}
+
+#[test]
+#[ignore]
+fn list_files2() {
+    let (files_to_decrypt, files_to_extract) = others();
+    for filename in files_to_extract {
+        list(&filename);
+    }
+
+    for filename in files_to_decrypt {
+        list_encrypted(&filename, DEFAULT_PASSWORD);
+    }
 }
 
 struct TempDir {
@@ -80,11 +109,11 @@ fn decrypt(filename: &str, password: &str, expected_dir: &str) {
     let output_file = path.to_str().unwrap();
     let expected_dir = format!("tests/{}", expected_dir);
     let name = format!("tests/{}", filename);
-    let mut process = Command::new("target/debug/uncbv");
+    let mut process = Command::new(uncbv_executable());
     let mut child =
         process.args(&["decrypt", &format!("{}.cbz", name), "-o", &output_file])
             .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
+            .stdout(Stdio::piped()) // NOTE: hide the password prompt.
             .spawn()
             .unwrap();
     writeln!(child.stdin.as_mut().unwrap(), "{}", password).unwrap();
@@ -97,22 +126,21 @@ fn decrypt_extract(filename: &str, password: &str) {
     let temp_dir = TempDir::new();
     let dir_name = temp_dir.as_str();
     let name = format!("tests/{}", filename);
-    let mut process = Command::new("target/debug/uncbv");
+    let mut process = Command::new(uncbv_executable());
 
     let mut child =
         process.args(&["extract", &format!("{}.cbz", name), "-o", dir_name])
             .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
+            .stdout(Stdio::piped()) // NOTE: hide the password prompt.
             .spawn()
             .unwrap();
 
     writeln!(child.stdin.as_mut().unwrap(), "{}", password).unwrap();
     child.wait().unwrap();
 
-    let expected_files: Vec<_> = read_dir(&name)
-        .unwrap()
-        .map(|dir_entry| dir_entry.unwrap().file_name().into_string().unwrap())
-        .collect();
+    let expected_files = get_file_recursives(&name);
+
+    assert!(expected_files.len() > 1);
 
     for file in expected_files {
         assert_file(format!("{}/{}", name, file), format!("{}/{}", dir_name, file));
@@ -123,15 +151,14 @@ fn extract(filename: &str) {
     let temp_dir = TempDir::new();
     let dir_name = temp_dir.as_str();
     let name = format!("tests/{}", filename);
-    let mut process = Command::new("target/debug/uncbv");
+    let mut process = Command::new(uncbv_executable());
     process.args(&["extract", &format!("{}.cbv", name), "-o", dir_name])
         .status()
         .unwrap();
 
-    let expected_files: Vec<_> = read_dir(&name)
-        .unwrap()
-        .map(|dir_entry| dir_entry.unwrap().file_name().into_string().unwrap())
-        .collect();
+    let expected_files = get_file_recursives(&name);
+
+    assert!(expected_files.len() > 1);
 
     for file in expected_files {
         assert_file(format!("{}/{}", name, file), format!("{}/{}", dir_name, file));
@@ -142,42 +169,56 @@ fn extract(filename: &str) {
 fn extract_decrypted(filename: &str, expected_dir: &str) {
     let temp_dir = TempDir::new();
     let dir_name = temp_dir.as_str();
-    let mut process = Command::new("target/debug/uncbv");
+    let mut process = Command::new(uncbv_executable());
 
     process.args(&["extract", &filename.to_string(), "-o", dir_name])
         .status()
         .unwrap();
 
-    let expected_files: Vec<_> = read_dir(expected_dir)
-        .unwrap()
-        .map(|dir_entry| dir_entry.unwrap().file_name().into_string().unwrap())
-        .collect();
+    let expected_files = get_file_recursives(expected_dir);
+
+    assert!(expected_files.len() > 1);
 
     for file in expected_files {
         assert_file(format!("{}/{}", expected_dir, file), format!("{}/{}", dir_name, file));
     }
 }
 
+fn get_file_recursives(directory: &str) -> Vec<String> {
+    let mut expected_files: Vec<String> = WalkDir::new(directory)
+        .into_iter()
+        .filter_map(|file| {
+            let file = file.unwrap();
+            if file.file_type().is_dir() {
+                None
+            }
+            else {
+                let path = file.path().strip_prefix(directory).unwrap();
+                Some(path.to_str().unwrap().to_string())
+            }
+        })
+        .collect();
+    expected_files.sort();
+    expected_files
+}
+
 fn list(filename: &str) {
     let name = format!("tests/{}", filename);
-    let mut process = Command::new("target/debug/uncbv");
+    let mut process = Command::new(uncbv_executable());
     process.args(&["list", &format!("{}.cbv", &name)]);
     let output = String::from_utf8(process.output().unwrap().stdout).unwrap();
     let mut output_files: Vec<_> = output.split("\n").collect();
     output_files.pop();
     output_files.sort();
 
-    let mut expected_files: Vec<_> = read_dir(&name)
-        .unwrap()
-        .map(|dir_entry| dir_entry.unwrap().file_name().into_string().unwrap())
-        .collect();
-    expected_files.sort();
+    let expected_files = get_file_recursives(&name);
+    assert!(expected_files.len() > 1);
     assert_eq!(expected_files, output_files);
 }
 
 fn list_encrypted(filename: &str, password: &str) {
     let name = format!("tests/{}", filename);
-    let mut process = Command::new("target/debug/uncbv");
+    let mut process = Command::new(uncbv_executable());
     let filename = format!("{}.cbz", &name);
 
     let mut child =
@@ -188,19 +229,54 @@ fn list_encrypted(filename: &str, password: &str) {
             .unwrap();
 
     writeln!(child.stdin.as_mut().unwrap(), "{}", password).unwrap();
-    child.wait().unwrap();
+    let output = String::from_utf8(child.wait_with_output().unwrap().stdout).unwrap();
 
-    let mut output = String::new();
-    child.stdout.unwrap().read_to_string(&mut output).unwrap();
     let mut output_files: Vec<_> = output.split("\n").collect();
     output_files.remove(0); // NOTE: Remove the "Password:" line.
     output_files.pop();
     output_files.sort();
 
-    let mut expected_files: Vec<_> = read_dir(&name)
-        .unwrap()
-        .map(|dir_entry| dir_entry.unwrap().file_name().into_string().unwrap())
-        .collect();
-    expected_files.sort();
+    let expected_files = get_file_recursives(&name);
+    assert!(expected_files.len() > 1);
     assert_eq!(expected_files, output_files);
+}
+
+fn others() -> (Vec<String>, Vec<String>) {
+    let mut files_to_decrypt = vec![];
+    let mut files_to_extract = vec![];
+    for file in read_dir("tests/others").unwrap() {
+        let mut path = file.unwrap().path();
+        let mut to_decrypt = false;
+        let mut to_extract = false;
+        if let Some(extension) = path.extension() {
+            let extension = extension.to_str().unwrap();
+            match extension {
+                "cbv" => to_extract = true,
+                "cbz" => to_decrypt = true,
+                _ => (),
+            }
+        }
+
+        path.set_extension("");
+        let path = path.strip_prefix("tests").unwrap();
+        let filename = path.to_str().unwrap();
+        if to_extract {
+            files_to_extract.push(filename.to_string());
+        }
+        else if to_decrypt {
+            files_to_decrypt.push(filename.to_string());
+        }
+    }
+
+    (files_to_decrypt, files_to_extract)
+}
+
+#[cfg(debug_assertions)]
+fn uncbv_executable() -> String {
+    "target/debug/uncbv".to_string()
+}
+
+#[cfg(not(debug_assertions))]
+fn uncbv_executable() -> String {
+    "target/release/uncbv".to_string()
 }

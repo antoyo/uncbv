@@ -16,18 +16,20 @@
  */
 
 /*
+ * FIXME: encrypted MegaDatabase does not extract (the bytes are incorrect starting at offset
+ * 0x2AB50000).
  * TODO: Add an argument to extract in a new directory.
- * TODO: Check the memory usage.
+ * TODO: Check whether the output files already exists. If so, ask to overwrite.
+ * TODO: If the files exist, truncate them.
+ * TODO: This software consumes too much memory (because of mmaping the file).
  * TODO: Better error handling.
  * TODO: Decompress the files concurrently.
+ * TODO: Add a state representing the result in the decompressor: (&[u8], Vec<u8>) instead of &[u8].
  * TODO: Write in a channel instead of in the files directly (perhaps there is a better way).
  * TODO: Decompress as a vector of Byte | RunLength | BackwardReference (perhaps there is a better
  * way).
- * TODO: check whether the output files already exists. If so, ask to overwrite.
- * TODO: if the files exist, truncate them.
- * TODO: create a crate for the cbv parser.
- * TODO: add the coverage badge and update the travis script to use coveralls (since travis-cargo
- * does not work).
+ * TODO: Create a crate for the cbv parser (Add the coverage badge and update the travis script to
+ * use coveralls (since travis-cargo does not work)).
  */
 
 extern crate des;

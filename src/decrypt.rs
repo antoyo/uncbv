@@ -21,7 +21,7 @@ use std::io::{self, BufReader, Read, Write};
 
 use des;
 
-const BUFFER_SIZE: usize = 4096;
+const BUFFER_SIZE: usize = 8 * 10000;
 const PASSWORD_LEN: usize = 8;
 
 /// Create the decryption key from the password.
