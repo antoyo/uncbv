@@ -18,7 +18,6 @@
 /*
  * FIXME: encrypted MegaDatabase does not extract (the bytes are incorrect starting at offset
  * 0x2AB50000).
- * TODO: Add an argument to extract in a new directory.
  * TODO: Check whether the output files already exists. If so, ask to overwrite.
  * TODO: If the files exist, truncate them.
  * TODO: This software consumes too much memory (because of mmaping the file).
@@ -47,6 +46,8 @@ mod decrypt;
 mod macros;
 mod cbv;
 
+use std::path::Path;
+
 use docopt::Docopt;
 
 use archive::{decrypt_archive, extract, get_file_list};
@@ -56,12 +57,13 @@ CBV unarchiver.
 
 Usage:
     uncbv (l | list) <filename>
-    uncbv (x | extract) <filename> [(-o <output> | --output=<output>)]
-    uncbv (d | decrypt) <filename> [(-o <output> | --output=<output>)]
+    uncbv (x | extract) <filename> [(--output=<output> | --create-dir)]
+    uncbv (d | decrypt) <filename> [--output=<output>]
     uncbv (-h | --help)
     uncbv (-V | --version)
 
 Options:
+    -c --create-dir         Extract in a new directory (uncbv extract <filename>.cbv -c is equivalent to uncbv extract <filename>.cbv -o <filename>).
     -h --help               Show this help.
     -o --output <output>    Set output directory.
     -V --version            Show the version of uncbv.
@@ -85,6 +87,7 @@ macro_rules! parse_or_show_error {
 #[derive(Debug, RustcDecodable)]
 struct Args {
     arg_filename: String,
+    flag_create_dir: bool,
     flag_output: Option<String>,
     cmd_d: bool,
     cmd_decrypt: bool,
@@ -107,7 +110,14 @@ fn main() {
         }
     }
     else if args.cmd_extract || args.cmd_x {
-        let output = args.flag_output.unwrap_or_else(|| ".".to_string());
+        let output =
+            if args.flag_create_dir {
+                let path = Path::new(filename);
+                path.file_stem().unwrap().to_str().unwrap().to_string()
+            }
+            else {
+                args.flag_output.unwrap_or_else(|| ".".to_string())
+            };
         parse_or_show_error!(extract, filename, &output);
     }
     else if args.cmd_decrypt || args.cmd_d {

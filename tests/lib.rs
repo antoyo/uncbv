@@ -1,9 +1,9 @@
 extern crate rand;
 extern crate walkdir;
 
-use std::env::temp_dir;
+use std::env::{current_dir, temp_dir};
 use std::ffi::OsString;
-use std::fs::{File, read_dir, remove_dir_all, remove_file};
+use std::fs::{File, create_dir_all, read_dir, remove_dir_all, remove_file};
 use std::io::{Read, Write};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
@@ -13,6 +13,31 @@ use walkdir::WalkDir;
 
 const BUFFER_SIZE: usize = 4096;
 const DEFAULT_PASSWORD: &'static str = "password";
+
+#[test]
+fn create_dir_argument() {
+    let temp_dir = TempDir::new();
+    let dir_name = temp_dir.as_str();
+    let filename = "small";
+
+    let name = format!("tests/{}", filename);
+
+    let directory = current_dir().unwrap();
+    let command = format!("{}/{}", directory.display(), uncbv_executable());
+    let mut process = Command::new(command);
+    process.args(&["extract", &format!("{}/{}.cbv", directory.to_str().unwrap(), name), "-c"])
+        .current_dir(dir_name)
+        .status()
+        .unwrap();
+
+    let expected_files = get_file_recursives(&name);
+
+    assert!(expected_files.len() > 1);
+
+    for file in expected_files {
+        assert_file(format!("{}/{}", name, file), format!("{}/{}/{}", dir_name, filename, file));
+    }
+}
 
 #[test]
 fn decrypt_files() {
@@ -69,6 +94,7 @@ struct TempDir {
 impl TempDir {
     fn new() -> TempDir {
         let path = temp_dir().join(format!("test{}", random::<u32>()));
+        create_dir_all(&path).unwrap();
         let string = path.clone().into_os_string();
         TempDir {
             path: path,
