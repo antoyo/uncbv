@@ -157,6 +157,81 @@ fn decrypt_files() {
 }
 
 #[test]
+fn dont_ask_confirm() {
+    fn try_extract(filename: &str, dir_name: &str) {
+        let name = format!("tests/{}", filename);
+        let mut process = Command::new(uncbv_executable());
+        let mut child =
+            process.args(&["extract", &format!("{}.cbv", name), "-o", dir_name, "--no-confirm"])
+                .stdin(Stdio::piped())
+                .stdout(Stdio::piped()) // NOTE: hide the message.
+                .spawn()
+                .unwrap();
+        child.wait().unwrap();
+
+        let expected_files = get_file_recursives(&name);
+
+        assert!(expected_files.len() > 1);
+
+        for file in expected_files {
+            assert_file(format!("{}/{}", name, file), format!("{}/{}", dir_name, file));
+        }
+    }
+
+    let temp_dir = TempDir::new();
+    let dir_name = temp_dir.as_str();
+    let filename = "small";
+    try_extract(filename, dir_name);
+
+    let modified_time1 = metadata(format!("{}/{}.cbh", dir_name, filename)).unwrap().modified().unwrap();
+
+    try_extract(filename, dir_name);
+
+    let modified_time2 = metadata(format!("{}/{}.cbh", dir_name, filename)).unwrap().modified().unwrap();
+
+    assert!(modified_time1 != modified_time2);
+}
+
+#[test]
+fn dont_ask_confirm_encrypted() {
+    fn try_extract(filename: &str, password: &str, dir_name: &str) {
+        let name = format!("tests/{}", filename);
+        let mut process = Command::new(uncbv_executable());
+        let mut child =
+            process.args(&["extract", &format!("{}.cbz", name), "-o", dir_name, "--no-confirm"])
+                .stdin(Stdio::piped())
+                .stdout(Stdio::piped()) // NOTE: hide the message.
+                .spawn()
+                .unwrap();
+        writeln!(child.stdin.as_mut().unwrap(), "{}", password).unwrap();
+        child.wait().unwrap();
+
+        let expected_files = get_file_recursives(&name);
+
+        assert!(expected_files.len() > 1);
+
+        for file in expected_files {
+            assert_file(format!("{}/{}", name, file), format!("{}/{}", dir_name, file));
+        }
+    }
+
+    let temp_dir = TempDir::new();
+    let dir_name = temp_dir.as_str();
+    let filename = "small";
+    try_extract(filename, "password", dir_name);
+
+    let modified_time1 = metadata(format!("{}/{}.cbh", dir_name, filename)).unwrap().modified().unwrap();
+    let archive_modified_time1 = metadata(format!("{}/{}.cbv", dir_name, filename)).unwrap().modified().unwrap();
+
+    try_extract(filename, "password", dir_name);
+
+    let modified_time2 = metadata(format!("{}/{}.cbh", dir_name, filename)).unwrap().modified().unwrap();
+    let archive_modified_time2 = metadata(format!("{}/{}.cbv", dir_name, filename)).unwrap().modified().unwrap();
+    assert!(modified_time1 != modified_time2);
+    assert!(archive_modified_time1 != archive_modified_time2);
+}
+
+#[test]
 fn extract_files() {
     extract("twic1134");
     extract("small");

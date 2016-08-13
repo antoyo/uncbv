@@ -72,14 +72,14 @@ fn ask_password() -> String {
 
 /// Ask for the password and decrypt the archive.
 /// Returns whether the archive has been decrypted or not.
-pub fn decrypt_archive(filename: &str, output: Option<String>) -> bool {
+pub fn decrypt_archive(filename: &str, output: Option<String>, no_confirm: bool) -> bool {
     let output = output.unwrap_or_else(|| {
         let mut path = PathBuf::from(filename);
         path.set_extension("cbv");
         path.into_os_string().into_string().unwrap()
     });
 
-    let override_file = ask_override_file(&Path::new(&output));
+    let override_file = no_confirm || ask_override_file(&Path::new(&output));
 
     if override_file {
         let password = ask_password();
@@ -91,7 +91,7 @@ pub fn decrypt_archive(filename: &str, output: Option<String>) -> bool {
 }
 
 /// Decrypt, unarchive and decompress the files from a CBV archive.
-pub fn extract(filename: &str, output_dir: &str) -> Result<(), Error> {
+pub fn extract(filename: &str, output_dir: &str, no_confirm: bool) -> Result<(), Error> {
     let output_path = Path::new(output_dir);
     let filename =
         if is_encrypted_archive(filename) {
@@ -102,7 +102,7 @@ pub fn extract(filename: &str, output_dir: &str) -> Result<(), Error> {
             let output_file_path = output_path.join(new_filename);
             let output_file = output_file_path.into_os_string().into_string().unwrap();;
 
-            if !decrypt_archive(filename, Some(output_file.clone())) {
+            if !decrypt_archive(filename, Some(output_file.clone()), no_confirm) {
                 return Ok(());
             }
             output_file
@@ -116,7 +116,7 @@ pub fn extract(filename: &str, output_dir: &str) -> Result<(), Error> {
     let file_list = unwrap_or_error!(extract_file_list(bytes));
 
     let first_file_path = output_path.join(&file_list[0].filename);
-    let override_file = ask_override_file(first_file_path.as_path());
+    let override_file = no_confirm || ask_override_file(first_file_path.as_path());
 
     if override_file {
         try!(init_output(&file_list, output_dir));

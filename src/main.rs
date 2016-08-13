@@ -18,7 +18,9 @@
 /*
  * FIXME: encrypted MegaDatabase does not extract (the bytes are incorrect starting at offset
  * 0x2AB50000).
- * TODO: Add a no-confirm argument.
+ * FIXME: panic when decrypting into a non-existing directory.
+ * FIXME: error when extracting an encrypted database to an existing decrypted database file
+ * (instead of overriding).
  * TODO: This software consumes too much memory (because of mmaping the file).
  * TODO: Better error handling.
  * TODO: Decompress the files concurrently.
@@ -56,14 +58,15 @@ CBV unarchiver.
 
 Usage:
     uncbv (l | list) <filename>
-    uncbv (x | extract) <filename> [(--output=<output> | --create-dir)]
-    uncbv (d | decrypt) <filename> [--output=<output>]
+    uncbv (x | extract) <filename> [(--output=<output> | --create-dir)] [--no-confirm]
+    uncbv (d | decrypt) <filename> [--output=<output>] [--no-confirm]
     uncbv (-h | --help)
     uncbv (-V | --version)
 
 Options:
     -c --create-dir         Extract in a new directory (uncbv extract <filename>.cbv -c is equivalent to uncbv extract <filename>.cbv -o <filename>).
     -h --help               Show this help.
+    --no-confirm            Do not ask for any confirmation before overriding.
     -o --output <output>    Set output directory.
     -V --version            Show the version of uncbv.
 ";
@@ -87,6 +90,7 @@ macro_rules! parse_or_show_error {
 struct Args {
     arg_filename: String,
     flag_create_dir: bool,
+    flag_no_confirm: bool,
     flag_output: Option<String>,
     cmd_d: bool,
     cmd_decrypt: bool,
@@ -117,9 +121,9 @@ fn main() {
             else {
                 args.flag_output.unwrap_or_else(|| ".".to_string())
             };
-        parse_or_show_error!(extract, filename, &output);
+        parse_or_show_error!(extract, filename, &output, args.flag_no_confirm);
     }
     else if args.cmd_decrypt || args.cmd_d {
-        decrypt_archive(filename, args.flag_output);
+        decrypt_archive(filename, args.flag_output, args.flag_no_confirm);
     }
 }
