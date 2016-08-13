@@ -17,8 +17,9 @@
 
 //! CBV archive utility functions.
 
+use std::collections::HashSet;
 use std::ffi::OsStr;
-use std::fs::{File, create_dir_all};
+use std::fs::{File, OpenOptions, create_dir_all};
 use std::io::{self, Error, ErrorKind, Read};
 use std::path::{Path, PathBuf};
 
@@ -46,6 +47,20 @@ macro_rules! unwrap_or_error {
     };
 }
 
+/// Ask to override a file.
+fn ask_override_file(path: &Path) -> bool {
+    if path.exists() {
+        let path = path.to_str().unwrap();
+        println!("The file {} already exists. Do you wish to override it? [y/N]", path);
+        let mut answer = String::new();
+        io::stdin().read_line(&mut answer).unwrap();
+        answer.chars().next().unwrap().to_lowercase().collect::<String>() == "y"
+    }
+    else {
+        true
+    }
+}
+
 /// Ask for the password.
 fn ask_password() -> String {
     let mut password = String::new();
@@ -56,31 +71,40 @@ fn ask_password() -> String {
 }
 
 /// Ask for the password and decrypt the archive.
-pub fn decrypt_archive(filename: &str, output: Option<String>) {
-    let password = ask_password();
+/// Returns whether the archive has been decrypted or not.
+pub fn decrypt_archive(filename: &str, output: Option<String>) -> bool {
     let output = output.unwrap_or_else(|| {
         let mut path = PathBuf::from(filename);
         path.set_extension("cbv");
         path.into_os_string().into_string().unwrap()
     });
 
-    let mut input_file = File::open(filename).unwrap();
-    let mut file = File::create(output).unwrap();
-    decrypt(&mut input_file, &password, &mut file).unwrap();
+    let override_file = ask_override_file(&Path::new(&output));
+
+    if override_file {
+        let password = ask_password();
+        let mut input_file = File::open(filename).unwrap();
+        let mut file = File::create(output).unwrap();
+        decrypt(&mut input_file, &password, &mut file).unwrap();
+    }
+    override_file
 }
 
 /// Decrypt, unarchive and decompress the files from a CBV archive.
 pub fn extract(filename: &str, output_dir: &str) -> Result<(), Error> {
+    let output_path = Path::new(output_dir);
     let filename =
         if is_encrypted_archive(filename) {
             let mut path = PathBuf::from(filename);
             path.set_extension("cbv");
             let new_filename = path.file_name().unwrap().to_str().unwrap();
             try!(create_dir_all(output_dir));
-            let output_path = Path::new(output_dir).join(new_filename);
-            let output_file = output_path.into_os_string().into_string().unwrap();;
+            let output_file_path = output_path.join(new_filename);
+            let output_file = output_file_path.into_os_string().into_string().unwrap();;
 
-            decrypt_archive(filename, Some(output_file.clone()));
+            if !decrypt_archive(filename, Some(output_file.clone())) {
+                return Ok(());
+            }
             output_file
         }
         else {
@@ -89,7 +113,18 @@ pub fn extract(filename: &str, output_dir: &str) -> Result<(), Error> {
 
     let file = try!(Mmap::open_path(filename, Protection::Read));
     let bytes: &[u8] = unsafe { file.as_slice() };
-    Ok(unwrap_or_error!(extract_files(bytes, output_dir)))
+    let file_list = unwrap_or_error!(extract_file_list(bytes));
+
+    let first_file_path = output_path.join(&file_list[0].filename);
+    let override_file = ask_override_file(first_file_path.as_path());
+
+    if override_file {
+        try!(init_output(&file_list, output_dir));
+        // TODO: continue after the file list.
+        unwrap_or_error!(extract_files(bytes, output_dir))
+    }
+
+    Ok(())
 }
 
 /// Extract the filenames from the archive.
@@ -120,6 +155,34 @@ pub fn get_file_list(filename: &str) -> Result<Vec<FileMetaData>, Error> {
         let bytes: &[u8] = unsafe { file.as_slice() };
         Ok(unwrap_or_error!(extract_file_list(bytes)))
     }
+}
+
+/// Create the required directories and truncate the existing files.
+fn init_output(file_list: &[FileMetaData], output_dir: &str) -> Result<(), Error> {
+    let output_path = Path::new(output_dir);
+    let mut directories = HashSet::new();
+    let mut files = vec![];
+
+    for file in file_list {
+        let file_path = output_path.join(&file.filename);
+        let directory = file_path.parent().unwrap().to_path_buf();
+        directories.insert(directory);
+        files.push(file_path);
+    }
+
+    for directory in directories {
+        try!(create_dir_all(directory));
+    }
+
+    for file in files {
+        try!(OpenOptions::new()
+             .create(true)
+             .write(true)
+             .truncate(true)
+             .open(&file));
+    }
+
+    Ok(())
 }
 
 /// Check if the file extension belongs to an encrypted CBV archive (.cbz).

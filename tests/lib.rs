@@ -3,7 +3,7 @@ extern crate walkdir;
 
 use std::env::{current_dir, temp_dir};
 use std::ffi::OsString;
-use std::fs::{File, create_dir_all, read_dir, remove_dir_all, remove_file};
+use std::fs::{File, create_dir_all, metadata, read_dir, remove_dir_all, remove_file};
 use std::io::{Read, Write};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
@@ -13,6 +13,116 @@ use walkdir::WalkDir;
 
 const BUFFER_SIZE: usize = 4096;
 const DEFAULT_PASSWORD: &'static str = "password";
+
+#[test]
+fn ask_confirm() {
+    fn try_extract(filename: &str, dir_name: &str, answer: &str) {
+        let name = format!("tests/{}", filename);
+        let mut process = Command::new(uncbv_executable());
+        let mut child =
+            process.args(&["extract", &format!("{}.cbv", name), "-o", dir_name])
+                .stdin(Stdio::piped())
+                .stdout(Stdio::piped()) // NOTE: hide the message.
+                .spawn()
+                .unwrap();
+        writeln!(child.stdin.as_mut().unwrap(), "{}", answer).unwrap();
+        child.wait().unwrap();
+
+        let expected_files = get_file_recursives(&name);
+
+        assert!(expected_files.len() > 1);
+
+        for file in expected_files {
+            assert_file(format!("{}/{}", name, file), format!("{}/{}", dir_name, file));
+        }
+    }
+
+    let temp_dir = TempDir::new();
+    let dir_name = temp_dir.as_str();
+    let filename = "small";
+    try_extract(filename, dir_name, "no");
+
+    let modified_time1 = metadata(format!("{}/{}.cbh", dir_name, filename)).unwrap().modified().unwrap();
+
+    try_extract(filename, dir_name, "no");
+
+    let modified_time2 = metadata(format!("{}/{}.cbh", dir_name, filename)).unwrap().modified().unwrap();
+
+    assert_eq!(modified_time1, modified_time2);
+
+    try_extract(filename, dir_name, "yes");
+
+    let modified_time3 = metadata(format!("{}/{}.cbh", dir_name, filename)).unwrap().modified().unwrap();
+    assert!(modified_time1 != modified_time3);
+}
+
+#[test]
+fn ask_confirm_encrypted() {
+    fn try_extract(filename: &str, password: &str, dir_name: &str, answers: Vec<&str>) {
+        let name = format!("tests/{}", filename);
+        let mut process = Command::new(uncbv_executable());
+        let mut child =
+            process.args(&["extract", &format!("{}.cbz", name), "-o", dir_name])
+                .stdin(Stdio::piped())
+                .stdout(Stdio::piped()) // NOTE: hide the message.
+                .spawn()
+                .unwrap();
+        let mut answers = answers.iter();
+        if let Some(answer) = answers.next() {
+            writeln!(child.stdin.as_mut().unwrap(), "{}", answer).unwrap();
+        }
+        writeln!(child.stdin.as_mut().unwrap(), "{}", password).unwrap();
+        if let Some(answer) = answers.next() {
+            writeln!(child.stdin.as_mut().unwrap(), "{}", answer).unwrap();
+        }
+        child.wait().unwrap();
+
+        let expected_files = get_file_recursives(&name);
+
+        assert!(expected_files.len() > 1);
+
+        for file in expected_files {
+            assert_file(format!("{}/{}", name, file), format!("{}/{}", dir_name, file));
+        }
+    }
+
+    let temp_dir = TempDir::new();
+    let dir_name = temp_dir.as_str();
+    let filename = "small";
+    try_extract(filename, "password", dir_name, vec![]);
+
+    let modified_time1 = metadata(format!("{}/{}.cbh", dir_name, filename)).unwrap().modified().unwrap();
+    let archive_modified_time1 = metadata(format!("{}/{}.cbv", dir_name, filename)).unwrap().modified().unwrap();
+
+    try_extract(filename, "password", dir_name, vec!["no"]);
+
+    let modified_time2 = metadata(format!("{}/{}.cbh", dir_name, filename)).unwrap().modified().unwrap();
+    let archive_modified_time2 = metadata(format!("{}/{}.cbv", dir_name, filename)).unwrap().modified().unwrap();
+
+    assert_eq!(modified_time1, modified_time2);
+    assert_eq!(archive_modified_time1, archive_modified_time2);
+
+    try_extract(filename, "password", dir_name, vec!["yes", "no"]);
+
+    let modified_time3 = metadata(format!("{}/{}.cbh", dir_name, filename)).unwrap().modified().unwrap();
+    let archive_modified_time3 = metadata(format!("{}/{}.cbv", dir_name, filename)).unwrap().modified().unwrap();
+    assert_eq!(modified_time1, modified_time3);
+    assert!(archive_modified_time1 != archive_modified_time3);
+
+    try_extract(filename, "password", dir_name, vec!["yes", "yes"]);
+
+    let modified_time4 = metadata(format!("{}/{}.cbh", dir_name, filename)).unwrap().modified().unwrap();
+    let archive_modified_time4 = metadata(format!("{}/{}.cbv", dir_name, filename)).unwrap().modified().unwrap();
+    assert!(modified_time1 != modified_time4);
+    assert!(archive_modified_time1 != archive_modified_time4);
+
+    try_extract(filename, "password", dir_name, vec!["no"]);
+
+    let modified_time5 = metadata(format!("{}/{}.cbh", dir_name, filename)).unwrap().modified().unwrap();
+    let archive_modified_time5 = metadata(format!("{}/{}.cbv", dir_name, filename)).unwrap().modified().unwrap();
+    assert_eq!(modified_time4, modified_time5);
+    assert_eq!(archive_modified_time4, archive_modified_time5);
+}
 
 #[test]
 fn create_dir_argument() {

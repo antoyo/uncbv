@@ -18,8 +18,7 @@
 /*
  * FIXME: encrypted MegaDatabase does not extract (the bytes are incorrect starting at offset
  * 0x2AB50000).
- * TODO: Check whether the output files already exists. If so, ask to overwrite.
- * TODO: If the files exist, truncate them.
+ * TODO: Add a no-confirm argument.
  * TODO: This software consumes too much memory (because of mmaping the file).
  * TODO: Better error handling.
  * TODO: Decompress the files concurrently.

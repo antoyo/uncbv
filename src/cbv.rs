@@ -17,7 +17,7 @@
 
 //! CBV file format parser.
 
-use std::fs::{OpenOptions, create_dir_all};
+use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::Path;
 
@@ -190,10 +190,6 @@ named_args!(extract_block<'a>(file: &FileMetaData, output_dir: &str) <()>,
             )
         , || {
             let path = Path::new(output_dir).join(&file.filename);
-            {
-                let directory = path.parent().unwrap().to_str().unwrap();
-                create_dir_all(directory).unwrap();
-            }
             let mut file = OpenOptions::new()
                 .create(true)
                 .append(true)
