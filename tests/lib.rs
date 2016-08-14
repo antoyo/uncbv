@@ -157,6 +157,24 @@ fn decrypt_files() {
 }
 
 #[test]
+fn decrypt_in_new_directory() {
+    let filename = "small";
+    let path = temp_dir().join("non_existing_dir").join(format!("{}.cbv", filename));
+    let output_file = path.to_str().unwrap();
+    let name = format!("tests/{}", filename);
+    let mut process = Command::new(uncbv_executable());
+    let mut child =
+        process.args(&["decrypt", &format!("{}.cbz", name), "-o", &output_file])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped()) // NOTE: hide the password prompt.
+            .spawn()
+            .unwrap();
+    writeln!(child.stdin.as_mut().unwrap(), "{}", DEFAULT_PASSWORD).unwrap();
+    child.wait().unwrap();
+    assert_file(format!("tests/decrypted_small.cbv"), format!("{}", output_file));
+}
+
+#[test]
 fn dont_ask_confirm() {
     fn try_extract(filename: &str, dir_name: &str) {
         let name = format!("tests/{}", filename);

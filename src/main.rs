@@ -18,7 +18,6 @@
 /*
  * FIXME: encrypted MegaDatabase does not extract (the bytes are incorrect starting at offset
  * 0x2AB50000).
- * FIXME: panic when decrypting into a non-existing directory.
  * FIXME: error when extracting an encrypted database to an existing decrypted database file
  * (instead of overriding).
  * TODO: This software consumes too much memory (because of mmaping the file).

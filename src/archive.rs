@@ -84,6 +84,10 @@ pub fn decrypt_archive(filename: &str, output: Option<String>, no_confirm: bool)
     if override_file {
         let password = ask_password();
         let mut input_file = File::open(filename).unwrap();
+        {
+            let output_dir = Path::new(&output).parent().unwrap();
+            create_dir_all(output_dir).unwrap();
+        }
         let mut file = File::create(output).unwrap();
         decrypt(&mut input_file, &password, &mut file).unwrap();
     }
