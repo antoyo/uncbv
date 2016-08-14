@@ -18,8 +18,6 @@
 /*
  * FIXME: encrypted MegaDatabase does not extract (the bytes are incorrect starting at offset
  * 0x2AB50000).
- * FIXME: error when extracting an encrypted database to an existing decrypted database file
- * (instead of overriding).
  * TODO: This software consumes too much memory (because of mmaping the file).
  * TODO: Better error handling.
  * TODO: Decompress the files concurrently.
@@ -49,6 +47,7 @@ mod cbv;
 use std::path::Path;
 
 use docopt::Docopt;
+use docopt::Error::{Argv, WithProgramUsage};
 
 use archive::{decrypt_archive, extract, get_file_list};
 
@@ -69,6 +68,17 @@ Options:
     -o --output <output>    Set output directory.
     -V --version            Show the version of uncbv.
 ";
+
+/// Match against a command argument.
+macro_rules! cmd_match {
+    ($args:ident { $($($command:ident)|* => $block:block,)* }) => {
+        $(
+        if $($args.$command)||* {
+            $block
+        }
+        )else*
+    };
+}
 
 /// Unwrap the result or show the error and return from the function.
 macro_rules! parse_or_show_error {
@@ -100,29 +110,61 @@ struct Args {
 }
 
 fn main() {
-    let version = format!("{}, version: {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
-    let args: Args = Docopt::new(USAGE)
-        .and_then(|decoder| decoder.version(Some(version)).decode())
-        .unwrap_or_else(|error| error.exit());
+    let args = valid_args();
+
     let filename = &args.arg_filename;
-    if args.cmd_list || args.cmd_l {
-        let files = parse_or_show_error!(get_file_list, filename);
-        for file in files {
-            println!("{}", file.filename);
-        }
-    }
-    else if args.cmd_extract || args.cmd_x {
-        let output =
-            if args.flag_create_dir {
-                let path = Path::new(filename);
-                path.file_stem().unwrap().to_str().unwrap().to_string()
+
+    cmd_match!(args {
+        cmd_list | cmd_l => {
+            let files = parse_or_show_error!(get_file_list, filename);
+            for file in files {
+                println!("{}", file.filename);
             }
-            else {
-                args.flag_output.unwrap_or_else(|| ".".to_string())
-            };
-        parse_or_show_error!(extract, filename, &output, args.flag_no_confirm);
+        },
+
+        cmd_extract | cmd_x => {
+            let output =
+                if args.flag_create_dir {
+                    let path = Path::new(filename);
+                    path.file_stem().unwrap().to_str().unwrap().to_string()
+                }
+                else {
+                    args.flag_output.unwrap_or_else(|| ".".to_string())
+                };
+            parse_or_show_error!(extract, filename, &output, args.flag_no_confirm);
+        },
+
+        cmd_decrypt | cmd_d => {
+            decrypt_archive(filename, args.flag_output, args.flag_no_confirm);
+        },
+    });
+}
+
+/// Check if the command is extract.
+fn is_extract_command(args: &Args) -> bool {
+    args.cmd_extract || args.cmd_x
+}
+
+/// Validate and return the command-line arguments.
+fn valid_args() -> Args {
+    let version = format!("{}, version: {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
+    let docopt = Docopt::new(USAGE).unwrap();
+    let usage = docopt.parser().usage.to_string();
+    let args: Args = docopt.version(Some(version)).decode()
+        .unwrap_or_else(|error| error.exit());
+    if is_extract_command(&args) && !valid_output(&args.flag_output) {
+        let error = WithProgramUsage(Box::new(Argv("The output argument should be a directory.".to_string())), usage);
+        error.exit();
     }
-    else if args.cmd_decrypt || args.cmd_d {
-        decrypt_archive(filename, args.flag_output, args.flag_no_confirm);
+    args
+}
+
+/// Validate the output argument.
+fn valid_output(output: &Option<String>) -> bool {
+    if let Some(ref output) = *output {
+        Path::new(output).is_dir()
+    }
+    else {
+        true
     }
 }
