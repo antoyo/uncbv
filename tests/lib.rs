@@ -159,7 +159,8 @@ fn decrypt_files() {
 #[test]
 fn decrypt_in_new_directory() {
     let filename = "small";
-    let path = temp_dir().join("non_existing_dir").join(format!("{}.cbv", filename));
+    let temp_dir = TempDir::new();
+    let path = temp_dir.path.join("non_existing_dir").join(format!("{}.cbv", filename));
     let output_file = path.to_str().unwrap();
     let name = format!("tests/{}", filename);
     let mut process = Command::new(uncbv_executable());
@@ -259,14 +260,14 @@ fn extract_files() {
 #[test]
 #[ignore]
 fn extract_files2() {
-    let (_files_to_decrypt, files_to_extract) = others();
+    let (files_to_decrypt, files_to_extract) = others();
     for filename in files_to_extract {
         extract(&filename);
     }
 
-    /*for filename in files_to_decrypt {
+    for filename in files_to_decrypt {
         decrypt_extract(&filename, DEFAULT_PASSWORD);
-    }*/
+    }
 }
 
 #[test]

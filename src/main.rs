@@ -16,8 +16,6 @@
  */
 
 /*
- * FIXME: encrypted MegaDatabase does not extract (the bytes are incorrect starting at offset
- * 0x2AB50000).
  * TODO: This software consumes too much memory (because of mmaping the file).
  * TODO: Better error handling.
  * TODO: Decompress the files concurrently.
