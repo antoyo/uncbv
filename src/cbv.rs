@@ -124,8 +124,6 @@ fn decompress_block(input: Vec<u8>) -> Vec<u8> {
         for _ in 0 .. 16 {
             let coded = (code_bytes & 0x8000) != 0;
             if coded {
-                // TODO: write a wrapper to a slice where the Index operator uses get_unchecked() in
-                // release and [] in debug.
                 let current_byte = input[0] as usize;
                 let high = current_byte >> 4;
                 let low = current_byte & 0xF;

@@ -21,3 +21,6 @@ rustc-serialize = "^0.3"
 [dev-dependencies]
 rand = "^0.3"
 walkdir = "^0.1"
+
+[profile.release]
+lto = true

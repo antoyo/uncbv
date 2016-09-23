@@ -79,7 +79,7 @@ pub fn decrypt_archive(filename: &str, output: Option<String>, no_confirm: bool)
         path.into_os_string().into_string().unwrap()
     });
 
-    let override_file = no_confirm || ask_override_file(&Path::new(&output));
+    let override_file = no_confirm || ask_override_file(Path::new(&output));
 
     if override_file {
         let password = ask_password();
@@ -124,7 +124,7 @@ pub fn extract(filename: &str, output_dir: &str, no_confirm: bool) -> Result<(),
 
     if override_file {
         try!(init_output(&file_list, output_dir));
-        // TODO: continue after the file list.
+        // TODO: do not parse again the file list.
         unwrap_or_error!(extract_files(bytes, output_dir))
     }
 

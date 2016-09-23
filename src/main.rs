@@ -16,6 +16,10 @@
  */
 
 /*
+ * TODO: Use 2 levels of parser. The second level receive a Write parameter.
+ * TODO: Create macros to keep a state within a parser.
+ * TODO: Use Buf{Reader|Writer} whenever possible.
+ * TODO: Use Vec::with_capacity() in the crates des, huffman and uncbv.
  * TODO: This software consumes too much memory (because of mmaping the file).
  * TODO: Better error handling.
  * TODO: Decompress the files concurrently.
