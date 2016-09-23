@@ -1,6 +1,6 @@
 [package]
 name = "uncbv"
-version = "0.2.2-pre"
+version = "0.2.2"
 authors = ["Antoni Boucher <bouanto@zoho.com>"]
 description = "CBV archive extractor written in Rust."
 license = "GPL-3.0"
