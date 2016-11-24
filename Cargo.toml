@@ -15,7 +15,7 @@ docopt = "^0.6"
 encoding = "^0.2"
 huffman = "^0.0.2"
 memmap = "^0.4"
-nom = "^1.2"
+nom = {version = "^2.0", features=["verbose-errors"]}
 rustc-serialize = "^0.3"
 
 [dev-dependencies]
