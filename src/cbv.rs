@@ -22,7 +22,7 @@ use std::io::Write;
 use std::path::Path;
 
 use encoding::{DecoderTrap, Encoding};
-use encoding::all::ISO_8859_1;
+use encoding::all::WINDOWS_1252;
 use huffman;
 use nom::{be_u16, le_i32, le_u8, le_u16};
 use nom::IResult::{self, Done};
@@ -308,7 +308,7 @@ named!(huffman_tree((&[u8], usize)) -> huffman::Tree,
 /// Convert the bytes reprensenting the filename into a String, replacing the backslashes by
 /// slashes and converting the filename to UTF-8.
 fn bytes_to_filename(bytes: &[u8]) -> String {
-    let mut string = ISO_8859_1.decode(bytes, DecoderTrap::Strict)
+    let mut string = WINDOWS_1252.decode(bytes, DecoderTrap::Strict)
         .unwrap(); // NOTE: The filename should be valid.
     replace_backslash_by_slash(&mut string);
     string

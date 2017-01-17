@@ -16,6 +16,8 @@
  */
 
 /*
+ * TODO: replace chain! macros by do_parse!.
+ * TODO: try to use length_value!, length_count! or length_bytes! macros.
  * TODO: Use 2 levels of parser. The second level receive a Write parameter.
  * TODO: Create macros to keep a state within a parser.
  * TODO: Use Buf{Reader|Writer} whenever possible.
@@ -52,6 +54,8 @@ use docopt::Docopt;
 use docopt::Error::{Argv, WithProgramUsage};
 
 use archive::{decrypt_archive, extract, get_file_list};
+
+const PKG_NAME: &'static str = "uncbv";
 
 const USAGE: &'static str = "
 CBV unarchiver.
@@ -149,7 +153,8 @@ fn is_extract_command(args: &Args) -> bool {
 
 /// Validate and return the command-line arguments.
 fn valid_args() -> Args {
-    let version = format!("{}, version: {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
+    let pkg_name = option_env!("CARGO_PKG_NAME").unwrap_or(PKG_NAME);
+    let version = format!("{}, version: {}", pkg_name, env!("CARGO_PKG_VERSION"));
     let docopt = Docopt::new(USAGE).unwrap();
     let usage = docopt.parser().usage.to_string();
     let args: Args = docopt.version(Some(version)).decode()

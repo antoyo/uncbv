@@ -165,14 +165,14 @@ fn decrypt_in_new_directory() {
     let name = format!("tests/{}", filename);
     let mut process = Command::new(uncbv_executable());
     let mut child =
-        process.args(&["decrypt", &format!("{}.cbz", name), "-o", &output_file])
+        process.args(&["decrypt", &format!("{}.cbz", name), "-o", output_file])
             .stdin(Stdio::piped())
             .stdout(Stdio::piped()) // NOTE: hide the password prompt.
             .spawn()
             .unwrap();
     writeln!(child.stdin.as_mut().unwrap(), "{}", DEFAULT_PASSWORD).unwrap();
     child.wait().unwrap();
-    assert_file(format!("tests/decrypted_small.cbv"), format!("{}", output_file));
+    assert_file("tests/decrypted_small.cbv".to_string(), output_file.to_string());
 }
 
 #[test]
@@ -341,7 +341,7 @@ fn decrypt(filename: &str, password: &str, expected_dir: &str) {
     let name = format!("tests/{}", filename);
     let mut process = Command::new(uncbv_executable());
     let mut child =
-        process.args(&["decrypt", &format!("{}.cbz", name), "-o", &output_file])
+        process.args(&["decrypt", &format!("{}.cbz", name), "-o", output_file])
             .stdin(Stdio::piped())
             .stdout(Stdio::piped()) // NOTE: hide the password prompt.
             .spawn()
@@ -437,7 +437,7 @@ fn list(filename: &str) {
     let mut process = Command::new(uncbv_executable());
     process.args(&["list", &format!("{}.cbv", &name)]);
     let output = String::from_utf8(process.output().unwrap().stdout).unwrap();
-    let mut output_files: Vec<_> = output.split("\n").collect();
+    let mut output_files: Vec<_> = output.split('\n').collect();
     output_files.pop();
     output_files.sort();
 
@@ -461,7 +461,7 @@ fn list_encrypted(filename: &str, password: &str) {
     writeln!(child.stdin.as_mut().unwrap(), "{}", password).unwrap();
     let output = String::from_utf8(child.wait_with_output().unwrap().stdout).unwrap();
 
-    let mut output_files: Vec<_> = output.split("\n").collect();
+    let mut output_files: Vec<_> = output.split('\n').collect();
     output_files.remove(0); // NOTE: Remove the "Password:" line.
     output_files.pop();
     output_files.sort();

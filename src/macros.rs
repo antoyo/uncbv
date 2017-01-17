@@ -2,13 +2,13 @@
 macro_rules! foreach {
     ($input:expr, $iterable:expr, $element:ident => $submac:ident!( $($args:tt)* )) => {{
         let mut input = $input;
-        for $element in $iterable.into_iter() {
+        for $element in $iterable {
             match $submac!(input, $($args)*) {
                 $crate::nom::IResult::Done(new_input, _) => {
                     input = new_input;
                 },
                 $crate::nom::IResult::Error(_) => {
-                    return $crate::nom::IResult::Error($crate::nom::Err::Position($crate::nom::ErrorKind::Many0, $input));
+                    return $crate::nom::IResult::Error(error_position!($crate::nom::ErrorKind::Many0, $input));
                 },
                 $crate::nom::IResult::Incomplete(_) => {
                     return $crate::nom::IResult::Incomplete($crate::nom::Needed::Unknown);
