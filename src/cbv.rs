@@ -260,7 +260,7 @@ named!(file_metadata <FileMetaData>,
 /// Parse a CBV file header.
 named!(pub header <Header>,
     chain!
-        ( tag!(&[0x08, 0x00]) // CBV magic number.
+        ( tag!(&[0x08, 0x00]) // CBV magic number.
         ~ file_count: le_u16
         ~ filename_len: le_u8
         ~ take!(3) // NOTE: unknown bytes.

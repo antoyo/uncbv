@@ -9,6 +9,7 @@ addons:
       - binutils-dev
 
 rust:
+  - 1.7.0
   - nightly
   - beta
   - stable

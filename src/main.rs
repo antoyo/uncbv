@@ -18,6 +18,10 @@
 /*
  * TODO: replace chain! macros by do_parse!.
  * TODO: try to use length_value!, length_count! or length_bytes! macros.
+ * TODO: might be quicker by not opening the file at every block.
+ * TODO: use bits! and take_bits!(4) to parse high and low.
+ * TODO: switch to clap.
+ * TODO: show the compressed and decompressed size in the list command.
  * TODO: Use 2 levels of parser. The second level receive a Write parameter.
  * TODO: Create macros to keep a state within a parser.
  * TODO: Use Buf{Reader|Writer} whenever possible.
@@ -155,6 +159,9 @@ fn is_extract_command(args: &Args) -> bool {
 fn valid_args() -> Args {
     let pkg_name = option_env!("CARGO_PKG_NAME").unwrap_or(PKG_NAME);
     let version = format!("{}, version: {}", pkg_name, env!("CARGO_PKG_VERSION"));
+    // TODO: use this when CARGO_PKG_VERSION will be in the cargo provided by every Linux
+    // distribution.
+    // let version = format!("{}, version: {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
     let docopt = Docopt::new(USAGE).unwrap();
     let usage = docopt.parser().usage.to_string();
     let args: Args = docopt.version(Some(version)).decode()
