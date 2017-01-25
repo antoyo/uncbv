@@ -16,14 +16,14 @@
  */
 
 /*
- * TODO: replace chain! macros by do_parse!.
- * TODO: try to use length_value!, length_count! or length_bytes! macros.
- * TODO: might be quicker by not opening the file at every block.
- * TODO: use bits! and take_bits!(4) to parse high and low.
  * TODO: switch to clap.
  * TODO: show the compressed and decompressed size in the list command.
+ * TODO: might be quicker by not opening the file at every block.
+ * TODO: use bits! and take_bits!(4) to parse high and low.
+ * TODO: replace chain! macros by do_parse!.
+ * TODO: try to use length_value!, length_count! or length_bytes! macros.
  * TODO: Use 2 levels of parser. The second level receive a Write parameter.
- * TODO: Create macros to keep a state within a parser.
+ * TODO: Create macros to keep a state within a parser (or use a struct with parser methods?).
  * TODO: Use Buf{Reader|Writer} whenever possible.
  * TODO: Use Vec::with_capacity() in the crates des, huffman and uncbv.
  * TODO: This software consumes too much memory (because of mmaping the file).

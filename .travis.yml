@@ -20,9 +20,9 @@ before_script:
       export PATH=$HOME/.local/bin:$PATH
 
 script:
-  - |
-      travis-cargo build &&
-      travis-cargo test
+  - travis-cargo build
+  - if [[ "$TRAVIS_RUST_VERSION" == "1.7.0" ]]; then travis-cargo test --features legacy ; fi
+  - if [[ "$TRAVIS_RUST_VERSION" != "1.7.0" ]]; then travis-cargo test ; fi
 #after_success:
   #- travis-cargo coveralls --no-sudo --verify
 

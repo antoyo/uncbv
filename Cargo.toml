@@ -8,6 +8,7 @@ repository = "https://github.com/antoyo/uncbv"
 
 [features]
 nightly = []
+legacy = []
 
 [dependencies]
 des = "^0.0.4"

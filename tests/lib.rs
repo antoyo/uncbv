@@ -15,6 +15,7 @@ const BUFFER_SIZE: usize = 4096;
 const DEFAULT_PASSWORD: &'static str = "password";
 
 #[test]
+#[cfg(not(feature = "legacy"))]
 fn ask_confirm() {
     fn try_extract(filename: &str, dir_name: &str, answer: &str) {
         let name = format!("tests/{}", filename);
@@ -57,6 +58,7 @@ fn ask_confirm() {
 }
 
 #[test]
+#[cfg(not(feature = "legacy"))]
 fn ask_confirm_encrypted() {
     fn try_extract(filename: &str, password: &str, dir_name: &str, answers: Vec<&str>) {
         let name = format!("tests/{}", filename);
@@ -176,6 +178,7 @@ fn decrypt_in_new_directory() {
 }
 
 #[test]
+#[cfg(not(feature = "legacy"))]
 fn dont_ask_confirm() {
     fn try_extract(filename: &str, dir_name: &str) {
         let name = format!("tests/{}", filename);
@@ -212,6 +215,7 @@ fn dont_ask_confirm() {
 }
 
 #[test]
+#[cfg(not(feature = "legacy"))]
 fn dont_ask_confirm_encrypted() {
     fn try_extract(filename: &str, password: &str, dir_name: &str) {
         let name = format!("tests/{}", filename);

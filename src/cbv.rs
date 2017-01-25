@@ -190,6 +190,7 @@ named_args!(extract_block<'a>(file: &FileMetaData, output_dir: &str) <()>,
             let path = Path::new(output_dir).join(&file.filename);
             let mut file = OpenOptions::new()
                 .create(true)
+                .write(true)
                 .append(true)
                 .open(path)
                 .unwrap();
