@@ -44,7 +44,7 @@ extern crate huffman;
 extern crate memmap;
 #[macro_use]
 extern crate nom;
-extern crate rustc_serialize;
+extern crate serde;
 
 mod archive;
 mod decrypt;
@@ -56,6 +56,7 @@ use std::path::Path;
 
 use docopt::Docopt;
 use docopt::Error::{Argv, WithProgramUsage};
+use serde::Deserialize;
 
 use archive::{decrypt_archive, extract, get_file_list};
 
@@ -105,7 +106,7 @@ macro_rules! parse_or_show_error {
     };
 }
 
-#[derive(Debug, RustcDecodable)]
+#[derive(Debug, Deserialize)]
 struct Args {
     arg_filename: String,
     flag_create_dir: bool,
@@ -164,7 +165,7 @@ fn valid_args() -> Args {
     // let version = format!("{}, version: {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
     let docopt = Docopt::new(USAGE).unwrap();
     let usage = docopt.parser().usage.to_string();
-    let args: Args = docopt.version(Some(version)).decode()
+    let args: Args = docopt.version(Some(version)).deserialize()
         .unwrap_or_else(|error| error.exit());
     if is_extract_command(&args) && !valid_output(&args.flag_output) {
         let error = WithProgramUsage(Box::new(Argv("The output argument should be a directory.".to_string())), usage);

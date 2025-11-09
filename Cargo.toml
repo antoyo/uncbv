@@ -12,12 +12,12 @@ legacy = []
 
 [dependencies]
 des = "^0.0.4"
-docopt = "^0.6"
+docopt = "1.1.1"
 encoding = "^0.2"
 huffman = "^0.0.3"
 memmap = "^0.4"
 nom = "^2.0"
-rustc-serialize = "^0.3"
+serde = { version = "1.0.228", features = ["derive"] }
 
 [dev-dependencies]
 rand = "^0.3"
