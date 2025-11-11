@@ -1,0 +1,20 @@
+name: CI
+
+on:
+  - push
+  - pull_request
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Build
+        run: cargo build
+
+      - name: Test
+        run: cargo test -- --include-ignored
+
+      #- name: clippy
+        #run: cargo clippy --all-targets -- -D warnings
