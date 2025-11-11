@@ -2,7 +2,7 @@
 
 CBV archive extractor written in Rust.
 
-image:https://img.shields.io/travis/antoyo/uncbv.svg[link="https://travis-ci.org/antoyo/uncbv"]
+image:https://img.shields.io/github/workflow/status/antoyo/uncbv/CI[link="https://github.com/antoyo/uncbv/actions"]
 //image:https://img.shields.io/coveralls/antoyo/uncbv.svg[link="https://coveralls.io/github/antoyo/uncbv"]
 image:https://img.shields.io/crates/v/uncbv.svg[link="https://crates.io/crates/uncbv"]
 image:https://img.shields.io/crates/d/uncbv.svg[link="https://crates.io/crates/uncbv"]
