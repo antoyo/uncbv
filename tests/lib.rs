@@ -294,6 +294,58 @@ fn list_files2() {
     }
 }
 
+/// Entries whose name escapes the output directory must not be written anywhere.
+#[test]
+fn reject_path_traversal() {
+    fn try_extract(temp_dir: &TempDir, entry_filename: &str) -> PathBuf {
+        let archive_path = temp_dir.path.join("archive.cbv");
+        File::create(&archive_path).unwrap()
+            .write_all(&single_file_archive(entry_filename, b"content")).unwrap();
+        let output_dir = temp_dir.path.join("output");
+        create_dir_all(&output_dir).unwrap();
+        Command::new(uncbv_executable())
+            .args(&["extract", archive_path.to_str().unwrap(), "-o", output_dir.to_str().unwrap(), "--no-confirm"])
+            .output()
+            .unwrap();
+        output_dir
+    }
+
+    let temp_dir = TempDir::new();
+
+    let output_dir = try_extract(&temp_dir, "directory\\inside.txt");
+    let mut content = String::new();
+    File::open(output_dir.join("directory/inside.txt")).unwrap().read_to_string(&mut content).unwrap();
+    assert_eq!(content, "content");
+
+    let absolute_path = temp_dir.path.join("absolute.txt");
+    for entry_filename in &["../escaped.txt", "..\\escaped.txt", "directory/../../escaped.txt", absolute_path.to_str().unwrap()] {
+        try_extract(&temp_dir, entry_filename);
+        assert!(!temp_dir.path.join("escaped.txt").exists(), "{} was extracted", entry_filename);
+        assert!(!absolute_path.exists(), "{} was extracted", entry_filename);
+    }
+}
+
+/// Build an uncompressed CBV archive containing a single file.
+fn single_file_archive(entry_filename: &str, content: &[u8]) -> Vec<u8> {
+    const FILENAME_SIZE: usize = 132;
+
+    let mut block = vec![];
+    block.extend_from_slice(&(content.len() as u16 + 1).to_le_bytes());
+    block.extend_from_slice(&[0, 0]);
+    block.push(0); // Neither compressed nor huffman-encoded.
+    block.extend_from_slice(content);
+
+    let mut archive = vec![0x08, 0x00, 1, 0, (FILENAME_SIZE + 8) as u8, 0, 0, 0];
+    let mut filename = entry_filename.as_bytes().to_vec();
+    assert!(filename.len() < FILENAME_SIZE);
+    filename.resize(FILENAME_SIZE, 0);
+    archive.extend_from_slice(&filename);
+    archive.extend_from_slice(&(block.len() as i32).to_le_bytes());
+    archive.extend_from_slice(&(content.len() as i32).to_le_bytes());
+    archive.extend_from_slice(&block);
+    archive
+}
+
 struct TempDir {
     path: PathBuf,
     string: OsString,

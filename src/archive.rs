@@ -21,7 +21,7 @@ use std::collections::HashSet;
 use std::ffi::OsStr;
 use std::fs::{File, OpenOptions, create_dir_all};
 use std::io::{self, Error, ErrorKind, Read};
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 use memmap::{Mmap, Protection};
 use nom::IResult::{self, Done, Incomplete};
@@ -118,6 +118,12 @@ pub fn extract(filename: &str, output_dir: &str, no_confirm: bool) -> Result<(),
     let file = try!(Mmap::open_path(filename, Protection::Read));
     let bytes: &[u8] = unsafe { file.as_slice() };
     let file_list = unwrap_or_error!(extract_file_list(bytes));
+    for file in &file_list {
+        if !is_relative_to_output(&file.filename) {
+            return Err(Error::new(ErrorKind::InvalidData,
+                format!("The file {} would be extracted outside of the output directory", file.filename)));
+        }
+    }
 
     let first_file_path = output_path.join(&file_list[0].filename);
     let override_file = no_confirm || ask_override_file(first_file_path.as_path());
@@ -187,6 +193,15 @@ fn init_output(file_list: &[FileMetaData], output_dir: &str) -> Result<(), Error
     }
 
     Ok(())
+}
+
+/// Check that `filename` cannot resolve to a path outside of the directory it is joined to.
+fn is_relative_to_output(filename: &str) -> bool {
+    Path::new(filename).components()
+        .all(|component| match component {
+            Component::Normal(_) | Component::CurDir => true,
+            Component::ParentDir | Component::RootDir | Component::Prefix(_) => false,
+        })
 }
 
 /// Check if the file extension belongs to an encrypted CBV archive (.cbz).
